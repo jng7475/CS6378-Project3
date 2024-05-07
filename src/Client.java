@@ -19,6 +19,8 @@ public class Client {
     public int sequence = 0;
     public int lastSequence = -1;
     public ArrayList<Integer> deferredSequence = new ArrayList<>();
+    List<String> serverIPs = new ArrayList<>();
+    List<String> clientIPs = new ArrayList<>();
 
     public Client(String id, int port, int numID) throws IOException {
         this.id = id;
@@ -26,6 +28,15 @@ public class Client {
         this.numID = numID;
         this.serverSocket = new ServerSocket(port);
         this.matrix = new int[][] { { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } };
+        serverIPs.add("10.176.69.33");
+        serverIPs.add("10.176.69.34");
+        serverIPs.add("10.176.69.35");
+        serverIPs.add("10.176.69.36");
+        serverIPs.add("10.176.69.55");
+        serverIPs.add("10.176.69.56");
+        serverIPs.add("10.176.69.62");
+
+        clientIPs.add("10.176.69.72");
     }
 
     public void sendMessages(List<String> receivers, String message, int senderID)
@@ -277,5 +288,21 @@ public class Client {
         for (int[] message : messageBufferList) {
             System.out.println("Message in messageBufferList: " + Arrays.toString(message));
         }
+    }
+
+    public static int[] hashFunction(int key) {
+        // hashResult array with 3 values: key % 7, (key+2) %7, (key+4) % 7
+        int[] hashResult = new int[3];
+        hashResult[0] = key % 7;
+        hashResult[1] = (key + 2) % 7;
+        hashResult[2] = (key + 4) % 7;
+        return hashResult;
+    }
+
+    public void insert(int objectID) throws NumberFormatException, IOException, InterruptedException {
+        int[] hashResult = hashFunction(objectID);
+        List<String> receivers = new ArrayList<>();
+        receivers.add(this.serverIPs.get(hashResult[0]) + ":" + (2100 + hashResult[0] + 1));
+        this.sendMessages(receivers, "client" + "," + numID + "," + "insert" + "," + objectID, numID);
     }
 }

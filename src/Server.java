@@ -19,6 +19,10 @@ public class Server {
     public int sequence = 0;
     public int lastSequence = -1;
     public ArrayList<Integer> deferredSequence = new ArrayList<>();
+    // hash map to store objects
+    public HashMap<Integer, Object> objectMap = new HashMap<>();
+    List<String> serverIPs = new ArrayList<>();
+    List<String> clientIPs = new ArrayList<>();
 
     public Server(String id, int port, int numID) throws IOException {
         this.id = id;
@@ -26,6 +30,16 @@ public class Server {
         this.numID = numID;
         this.serverSocket = new ServerSocket(port);
         this.matrix = new int[][] { { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } };
+        // serverIPs.add("10.176.69.32");
+        serverIPs.add("10.176.69.33");
+        serverIPs.add("10.176.69.34");
+        serverIPs.add("10.176.69.35");
+        serverIPs.add("10.176.69.36");
+        serverIPs.add("10.176.69.55");
+        serverIPs.add("10.176.69.56");
+        serverIPs.add("10.176.69.62");
+
+        clientIPs.add("10.176.69.72");
     }
 
     public void sendMessages(List<String> receivers, String message, int senderID)
@@ -48,7 +62,6 @@ public class Server {
         for (String receiver : receivers) {
             int receiverPort = Integer.parseInt(receiver.split(":")[1]);
             String receiverAddress = receiver.split(":")[0];
-            System.out.println("Sending message to " + receiverAddress + ":" + receiverPort);
             Socket socket = new Socket(receiverAddress, receiverPort);
             OutputStream out = socket.getOutputStream();
             out.write(data);
@@ -73,33 +86,74 @@ public class Server {
             System.out.println("Connected to " + senderID);
             return;
         } else if (message[0].equals("client")) {
-            System.out.println("Received message from client: " + senderID);
+            String command = message[2];
+            String objectID = message[3];
+            System.out.println("This is main server, from client: " + senderID + " with command: " + command
+                    + " and objectID: " + objectID);
+            if (command.equals("insert")) {
+                if (objectMap.containsKey(Integer.parseInt(objectID))) {
+                    // add 1 to content
+                    objectMap.get(Integer.parseInt(objectID)).content += 1;
+                } else {
+                    // insert object into hash map
+                    objectMap.put(Integer.parseInt(objectID), new Object(Integer.parseInt(objectID), 1));
+                    // get 2 hash results
+                    int[] hashResult = hashFunction(Integer.parseInt(objectID));
+                    List<String> receivers = new ArrayList<>();
+                    // add 2nd and 3rd server to receivers
+                    receivers.add(serverIPs.get(hashResult[1]) + ":" + (2100 + hashResult[1] + 1));
+                    receivers.add(serverIPs.get(hashResult[2]) + ":" + (2100 + hashResult[2] + 1));
+                    this.sendMessages(receivers, "insert" + "," + numID + "," + "insert" + "," + objectID,
+                            numID);
+                }
+            }
+            // print objectID and object content of current object
+            System.out.println(
+                    "ObjectID: " + objectID + " Content: " + objectMap.get(Integer.parseInt(objectID)).content);
             return;
+        } else if (message[0].equals("insert")) {
+            String command = message[2];
+            String objectID = message[3];
+            System.out.println("Received message from main Server: " + senderID
+                    + " with objectID: " + objectID);
+            if (objectMap.containsKey(Integer.parseInt(objectID))) {
+                // add 1 to content
+                objectMap.get(Integer.parseInt(objectID)).content += 1;
+            } else {
+                // insert object into hash map
+                objectMap.put(Integer.parseInt(objectID), new Object(Integer.parseInt(objectID), 1));
+            }
+            // print objectID and object content of current object
+            System.out.println(
+                    "ObjectID: " + objectID + " Content: " + objectMap.get(Integer.parseInt(objectID)).content);
         }
+        return;
         // int[][] senderMatrix = new int[4][4];
         // for (int i = 0; i < 4; i++) {
-        //     for (int j = 0; j < 4; j++) {
-        //         senderMatrix[i][j] = Integer.parseInt(message[2 + (i * 4) + j]);
-        //     }
+        // for (int j = 0; j < 4; j++) {
+        // senderMatrix[i][j] = Integer.parseInt(message[2 + (i * 4) + j]);
         // }
-        // System.out.println("Sender matrix received from " + senderID + " : " + Arrays.deepToString(senderMatrix));
+        // }
+        // System.out.println("Sender matrix received from " + senderID + " : " +
+        // Arrays.deepToString(senderMatrix));
         // String eligibilityCheck = canReceive(senderMatrix, senderID);
         // int problemID = Integer.parseInt(eligibilityCheck.substring(1));
         // boolean eligible = false;
         // if (eligibilityCheck.charAt(0) == 'f') {
-        //     eligible = false;
+        // eligible = false;
         // } else {
-        //     eligible = true;
+        // eligible = true;
         // }
         // if (eligible) {
-        //     System.out.println("Eligible to receive from " + senderID);
-        //     updateMatrix(false, senderMatrix, senderID, eligible);
-        //     System.out.println("Updated matrix after receive: " + Arrays.deepToString(matrix));
-        //     messageReceived += 1;
-        //     receiveDeferredMessages(problemID, senderID);
+        // System.out.println("Eligible to receive from " + senderID);
+        // updateMatrix(false, senderMatrix, senderID, eligible);
+        // System.out.println("Updated matrix after receive: " +
+        // Arrays.deepToString(matrix));
+        // messageReceived += 1;
+        // receiveDeferredMessages(problemID, senderID);
         // } else {
-        //     System.out.println("deferring");
-        //     deferMessage(problemID, senderMatrix, senderID);
+        // System.out.println("deferring");
+        // deferMessage(problemID, senderMatrix, senderID);
         // }
     }
 
@@ -279,5 +333,14 @@ public class Server {
         for (int[] message : messageBufferList) {
             System.out.println("Message in messageBufferList: " + Arrays.toString(message));
         }
+    }
+
+    public static int[] hashFunction(int key) {
+        // hashResult array with 3 values: key % 7, (key+2) %7, (key+4) % 7
+        int[] hashResult = new int[3];
+        hashResult[0] = key % 7;
+        hashResult[1] = (key + 2) % 7;
+        hashResult[2] = (key + 4) % 7;
+        return hashResult;
     }
 }
