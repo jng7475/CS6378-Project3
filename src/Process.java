@@ -7,6 +7,7 @@ public class Process {
     private final String id;
     private final int numID;
     private final int ownPort;
+    // ok
     private ServerSocket serverSocket;
     public int[][] matrix = new int[4][4];
     public Set<Integer> connections = new HashSet<>();
