@@ -3,7 +3,7 @@ import java.net.*;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public class Server {
+public class Client {
     private final String id;
     private final int numID;
     private final int ownPort;
@@ -20,7 +20,7 @@ public class Server {
     public int lastSequence = -1;
     public ArrayList<Integer> deferredSequence = new ArrayList<>();
 
-    public Server(String id, int port, int numID) throws IOException {
+    public Client(String id, int port, int numID) throws IOException {
         this.id = id;
         this.ownPort = port;
         this.numID = numID;
@@ -72,35 +72,33 @@ public class Server {
             connections.add(senderID);
             System.out.println("Connected to " + senderID);
             return;
-        } else if (message[0].equals("client")) {
-            System.out.println("Received message from client: " + senderID);
-            return;
         }
-        // int[][] senderMatrix = new int[4][4];
-        // for (int i = 0; i < 4; i++) {
-        //     for (int j = 0; j < 4; j++) {
-        //         senderMatrix[i][j] = Integer.parseInt(message[2 + (i * 4) + j]);
-        //     }
-        // }
-        // System.out.println("Sender matrix received from " + senderID + " : " + Arrays.deepToString(senderMatrix));
-        // String eligibilityCheck = canReceive(senderMatrix, senderID);
-        // int problemID = Integer.parseInt(eligibilityCheck.substring(1));
-        // boolean eligible = false;
-        // if (eligibilityCheck.charAt(0) == 'f') {
-        //     eligible = false;
-        // } else {
-        //     eligible = true;
-        // }
-        // if (eligible) {
-        //     System.out.println("Eligible to receive from " + senderID);
-        //     updateMatrix(false, senderMatrix, senderID, eligible);
-        //     System.out.println("Updated matrix after receive: " + Arrays.deepToString(matrix));
-        //     messageReceived += 1;
-        //     receiveDeferredMessages(problemID, senderID);
-        // } else {
-        //     System.out.println("deferring");
-        //     deferMessage(problemID, senderMatrix, senderID);
-        // }
+
+        int[][] senderMatrix = new int[4][4];
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                senderMatrix[i][j] = Integer.parseInt(message[2 + (i * 4) + j]);
+            }
+        }
+        System.out.println("Sender matrix received from " + senderID + " : " + Arrays.deepToString(senderMatrix));
+        String eligibilityCheck = canReceive(senderMatrix, senderID);
+        int problemID = Integer.parseInt(eligibilityCheck.substring(1));
+        boolean eligible = false;
+        if (eligibilityCheck.charAt(0) == 'f') {
+            eligible = false;
+        } else {
+            eligible = true;
+        }
+        if (eligible) {
+            System.out.println("Eligible to receive from " + senderID);
+            updateMatrix(false, senderMatrix, senderID, eligible);
+            System.out.println("Updated matrix after receive: " + Arrays.deepToString(matrix));
+            messageReceived += 1;
+            receiveDeferredMessages(problemID, senderID);
+        } else {
+            System.out.println("deferring");
+            deferMessage(problemID, senderMatrix, senderID);
+        }
     }
 
     // listening messages from other processes
