@@ -1,7 +1,4 @@
-import java.io.*;
-import java.net.*;
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Process {
     public static int[] hashFunction(int key) {
@@ -17,13 +14,20 @@ public class Process {
         // args[0] will be of form s1,s2,s3,s4,s5,s6,s7 or c1,c2,c3,c4,c5
         String arg = args[0];
         boolean isServer = arg.charAt(0) == 's';
+        String status;
+        // if there's a second argument, it will be the status of the process
+        if (args.length > 1) {
+            status = args[1];
+        } 
         int id = Integer.parseInt(arg.substring(1));
         String processId = "Process " + id;
         int port = 2100 + id;
         
         if (isServer) {
             System.out.println("Starting server " + processId + " on port " + port);
+
             Server process = new Server(processId, port, id);
+            
             List<String> receivers = new ArrayList<>();
             for (int i = 1; i < 8; i++) {
                 if (i != id) {
@@ -62,16 +66,18 @@ public class Process {
             while (true) {
                 Scanner scanner = new Scanner(System.in);
                 System.out.println("Enter command: ");
-                // command will be of form insert 1, delete 1, search 1
+                // command will be of form write 1, delete 1, search 1
                 String command = scanner.nextLine();
                 String[] commandArr = command.split(" ");
                 String commandType = commandArr[0];
                 String objectID = commandArr[1];
                 switch (commandType) {
-                    case "insert":
-                        process.insert(Integer.parseInt(objectID));
+                    case "write":
+                        process.write(Integer.parseInt(objectID));
                         break;
-                
+                    case "read":
+                        process.read(Integer.parseInt(objectID));
+                        break;
                     default:
                         System.out.println("Invalid command");
                         break;

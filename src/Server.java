@@ -30,16 +30,16 @@ public class Server {
         this.numID = numID;
         this.serverSocket = new ServerSocket(port);
         this.matrix = new int[][] { { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } };
-        // serverIPs.add("10.176.69.32");
-        serverIPs.add("10.176.69.33");
-        serverIPs.add("10.176.69.34");
-        serverIPs.add("10.176.69.35");
-        serverIPs.add("10.176.69.36");
-        serverIPs.add("10.176.69.55");
-        serverIPs.add("10.176.69.56");
-        serverIPs.add("10.176.69.62");
+        serverIPs.add("10.176.69.33"); // 02
+        serverIPs.add("10.176.69.34"); // 03
+        serverIPs.add("10.176.69.35"); // 04
+        serverIPs.add("10.176.69.36"); // 05
+        serverIPs.add("10.176.69.55"); // 24
+        serverIPs.add("10.176.69.56"); // 25
+        serverIPs.add("10.176.69.62"); // 31
 
-        clientIPs.add("10.176.69.72");
+        clientIPs.add("10.176.69.72"); // 41
+        clientIPs.add("10.176.69.73"); // 42
     }
 
     public void sendMessages(List<String> receivers, String message, int senderID)
@@ -47,14 +47,14 @@ public class Server {
         System.out.println("Sending message: " + message);
         String[] sendingMessage = message.split(",");
         if (!sendingMessage[0].equals("initializing")) {
-            updateMatrix(true, null, senderID, false);
-            // print matrix
-            System.out.println("Sending matrix: " + Arrays.deepToString(matrix));
-            for (int i = 0; i < matrix.length; i++) {
-                for (int j = 0; j < matrix[i].length; j++) {
-                    message += "," + matrix[i][j];
-                }
-            }
+            // updateMatrix(true, null, senderID, false);
+            // // print matrix
+            // System.out.println("Sending matrix: " + Arrays.deepToString(matrix));
+            // for (int i = 0; i < matrix.length; i++) {
+            // for (int j = 0; j < matrix[i].length; j++) {
+            // message += "," + matrix[i][j];
+            // }
+            // }
             messageSent += 1;
         }
 
@@ -88,39 +88,105 @@ public class Server {
         } else if (message[0].equals("client")) {
             String command = message[2];
             String objectID = message[3];
+            String currentServer = message[4];
             System.out.println("This is main server, from client: " + senderID + " with command: " + command
                     + " and objectID: " + objectID);
-            if (command.equals("insert")) {
+            if (command.equals("write")) {
+                int[] hashResult = hashFunction(Integer.parseInt(objectID));
+                List<String> receivers = new ArrayList<>();
+                List<String> receiver1 = new ArrayList<>();
+                List<String> receiver2 = new ArrayList<>();
+                // add 2nd and 3rd server to receivers
+                for (int i = 0; i < 3; i++) {
+                    if (hashResult[i] != Integer.parseInt(currentServer)) {
+                        // check alive or not
+                        // if receiver 1 empty, add to receiver 1, else add to receiver 2
+                        if (receiver1.isEmpty()) {
+                            receiver1.add(serverIPs.get(hashResult[i]) + ":" + (2100 + hashResult[i] + 1));
+                        } else {
+                            receiver2.add(serverIPs.get(hashResult[i]) + ":" + (2100 + hashResult[i] + 1));
+                        }
+                    }
+                }
+                // send to LIVE servers
+                int numDown = 0;
+                try {
+                    this.sendMessages(receiver1, "test" + "," + numID + "," + "write" + "," + objectID,
+                            numID);
+                    receivers.add(receiver1.get(0));
+                } catch (ConnectException e) {
+                    System.out.println("Server " + receiver1.get(0) + " is down");
+                    numDown++;
+                }
+
+                try {
+                    this.sendMessages(receiver2, "test" + "," + numID + "," + "write" + "," + objectID,
+                            numID);
+                    receivers.add(receiver2.get(0));
+
+                } catch (ConnectException e) {
+                    System.out.println("Server " + receiver2.get(0) + " is down");
+                    numDown++;
+
+                }
+
+                List<String> clientReceiver = new ArrayList<>();
+                // add client to receivers
+                clientReceiver.add(clientIPs.get(senderID - 1) + ":" + (2100 + senderID));
+                if (numDown == 2) {
+                    // send error message to client
+                    this.sendMessages(clientReceiver,
+                            "errorWrite" + "," + numID + ","
+                                    + "Write operation failed because 2 or more servers are down",
+                            numID);
+                    return;
+                }
+
                 if (objectMap.containsKey(Integer.parseInt(objectID))) {
                     // add 1 to content
                     objectMap.get(Integer.parseInt(objectID)).content += 1;
                 } else {
-                    // insert object into hash map
+                    // write object into hash map
                     objectMap.put(Integer.parseInt(objectID), new Object(Integer.parseInt(objectID), 1));
-                    // get 2 hash results
-                    int[] hashResult = hashFunction(Integer.parseInt(objectID));
-                    List<String> receivers = new ArrayList<>();
-                    // add 2nd and 3rd server to receivers
-                    receivers.add(serverIPs.get(hashResult[1]) + ":" + (2100 + hashResult[1] + 1));
-                    receivers.add(serverIPs.get(hashResult[2]) + ":" + (2100 + hashResult[2] + 1));
-                    this.sendMessages(receivers, "insert" + "," + numID + "," + "insert" + "," + objectID,
+                }
+
+                this.sendMessages(receivers, "write" + "," + numID + "," + "write" + "," + objectID,
+                        numID);
+                this.sendMessages(clientReceiver,
+                        "success" + "," + numID + "," + "write" + ","
+                                + objectMap.get(Integer.parseInt(objectID)).content,
+                        numID);
+                // print objectID and object content of current object
+                System.out.println(
+                        "ObjectID: " + objectID + " Content: " + objectMap.get(Integer.parseInt(objectID)).content);
+            } else if (command.equals("read")) {
+                List<String> receivers = new ArrayList<>();
+                // add client to receivers
+                receivers.add(clientIPs.get(senderID - 1) + ":" + (2100 + senderID));
+                if (objectMap.containsKey(Integer.parseInt(message[3]))) {
+                    System.out.println(
+                            "ObjectID: " + message[2] + " Content: "
+                                    + objectMap.get(Integer.parseInt(message[3])).content);
+                    this.sendMessages(receivers,
+                            "success" + "," + numID + "," + "read" + ","
+                                    + objectMap.get(Integer.parseInt(message[3])).content,
+                            numID);
+                } else {
+                    System.out.println("ObjectID: " + message[3] + " does not exist");
+                    this.sendMessages(receivers,
+                            "error" + "," + numID + "," + "Read operation failed because object does not exist",
                             numID);
                 }
             }
-            // print objectID and object content of current object
-            System.out.println(
-                    "ObjectID: " + objectID + " Content: " + objectMap.get(Integer.parseInt(objectID)).content);
             return;
-        } else if (message[0].equals("insert")) {
-            String command = message[2];
+        }
+        if (message[0].equals("write")) {
             String objectID = message[3];
-            System.out.println("Received message from main Server: " + senderID
-                    + " with objectID: " + objectID);
             if (objectMap.containsKey(Integer.parseInt(objectID))) {
                 // add 1 to content
                 objectMap.get(Integer.parseInt(objectID)).content += 1;
             } else {
-                // insert object into hash map
+                // write object into hash map
                 objectMap.put(Integer.parseInt(objectID), new Object(Integer.parseInt(objectID), 1));
             }
             // print objectID and object content of current object

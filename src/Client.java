@@ -21,6 +21,9 @@ public class Client {
     public ArrayList<Integer> deferredSequence = new ArrayList<>();
     List<String> serverIPs = new ArrayList<>();
     List<String> clientIPs = new ArrayList<>();
+    public boolean readSuccess = false;
+    public boolean writeRequestSuccess = false;
+    public boolean writeFailed = false;
 
     public Client(String id, int port, int numID) throws IOException {
         this.id = id;
@@ -28,15 +31,16 @@ public class Client {
         this.numID = numID;
         this.serverSocket = new ServerSocket(port);
         this.matrix = new int[][] { { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } };
-        serverIPs.add("10.176.69.33");
-        serverIPs.add("10.176.69.34");
-        serverIPs.add("10.176.69.35");
-        serverIPs.add("10.176.69.36");
-        serverIPs.add("10.176.69.55");
-        serverIPs.add("10.176.69.56");
-        serverIPs.add("10.176.69.62");
+        serverIPs.add("10.176.69.33"); // 02
+        serverIPs.add("10.176.69.34"); // 03
+        serverIPs.add("10.176.69.35"); // 04
+        serverIPs.add("10.176.69.36"); // 05
+        serverIPs.add("10.176.69.55"); // 24
+        serverIPs.add("10.176.69.56"); // 25
+        serverIPs.add("10.176.69.62"); // 31
 
-        clientIPs.add("10.176.69.72");
+        clientIPs.add("10.176.69.72"); // 41
+        clientIPs.add("10.176.69.73"); // 42
     }
 
     public void sendMessages(List<String> receivers, String message, int senderID)
@@ -44,28 +48,31 @@ public class Client {
         System.out.println("Sending message: " + message);
         String[] sendingMessage = message.split(",");
         if (!sendingMessage[0].equals("initializing")) {
-            updateMatrix(true, null, senderID, false);
+            // updateMatrix(true, null, senderID, false);
             // print matrix
-            System.out.println("Sending matrix: " + Arrays.deepToString(matrix));
-            for (int i = 0; i < matrix.length; i++) {
-                for (int j = 0; j < matrix[i].length; j++) {
-                    message += "," + matrix[i][j];
-                }
-            }
+            // System.out.println("Sending matrix: " + Arrays.deepToString(matrix));
+            // for (int i = 0; i < matrix.length; i++) {
+            // for (int j = 0; j < matrix[i].length; j++) {
+            // message += "," + matrix[i][j];
+            // }
+            // }
             messageSent += 1;
         }
-
+        // try{
         byte[] data = message.getBytes();
         for (String receiver : receivers) {
             int receiverPort = Integer.parseInt(receiver.split(":")[1]);
             String receiverAddress = receiver.split(":")[0];
-            System.out.println("Sending message to " + receiverAddress + ":" + receiverPort);
             Socket socket = new Socket(receiverAddress, receiverPort);
             OutputStream out = socket.getOutputStream();
             out.write(data);
             out.flush();
             socket.close();
         }
+        // } catch (ConnectException e) {
+        // System.out.println("Connection refused. Please retry");
+        // }
+
     }
 
     public void processMessages(InputStream in) throws InterruptedException, IOException {
@@ -84,32 +91,57 @@ public class Client {
             System.out.println("Connected to " + senderID);
             return;
         }
-
-        int[][] senderMatrix = new int[4][4];
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                senderMatrix[i][j] = Integer.parseInt(message[2 + (i * 4) + j]);
+        if (message[0].equals("success")) {
+            int serverID = Integer.parseInt(message[1]);
+            String command = message[2];
+            int content = Integer.parseInt(message[3]);
+            if (command.equals("write")) {
+                writeRequestSuccess = true;
+            } else if (command.equals("read")) {
+                System.out.println("Read from server " + serverID + ": " + content);
+                readSuccess = true;
             }
+            return;
+        } else if (message[0].equals("error")) {
+            int serverID = Integer.parseInt(message[1]);
+            String error = message[2];
+            System.out.println("Failed to read from server " + serverID + " with error: " + error);
+            return;
+        } else if (message[0].equals("errorWrite")) {
+            int serverID = Integer.parseInt(message[1]);
+            String error = message[2];
+            System.out.println("Notice from server " + serverID + " with error: " + error);
+            writeFailed = true;
+            return;
         }
-        System.out.println("Sender matrix received from " + senderID + " : " + Arrays.deepToString(senderMatrix));
-        String eligibilityCheck = canReceive(senderMatrix, senderID);
-        int problemID = Integer.parseInt(eligibilityCheck.substring(1));
-        boolean eligible = false;
-        if (eligibilityCheck.charAt(0) == 'f') {
-            eligible = false;
-        } else {
-            eligible = true;
-        }
-        if (eligible) {
-            System.out.println("Eligible to receive from " + senderID);
-            updateMatrix(false, senderMatrix, senderID, eligible);
-            System.out.println("Updated matrix after receive: " + Arrays.deepToString(matrix));
-            messageReceived += 1;
-            receiveDeferredMessages(problemID, senderID);
-        } else {
-            System.out.println("deferring");
-            deferMessage(problemID, senderMatrix, senderID);
-        }
+
+        // int[][] senderMatrix = new int[4][4];
+        // for (int i = 0; i < 4; i++) {
+        // for (int j = 0; j < 4; j++) {
+        // senderMatrix[i][j] = Integer.parseInt(message[2 + (i * 4) + j]);
+        // }
+        // }
+        // System.out.println("Sender matrix received from " + senderID + " : " +
+        // Arrays.deepToString(senderMatrix));
+        // String eligibilityCheck = canReceive(senderMatrix, senderID);
+        // int problemID = Integer.parseInt(eligibilityCheck.substring(1));
+        // boolean eligible = false;
+        // if (eligibilityCheck.charAt(0) == 'f') {
+        // eligible = false;
+        // } else {
+        // eligible = true;
+        // }
+        // if (eligible) {
+        // System.out.println("Eligible to receive from " + senderID);
+        // updateMatrix(false, senderMatrix, senderID, eligible);
+        // System.out.println("Updated matrix after receive: " +
+        // Arrays.deepToString(matrix));
+        // messageReceived += 1;
+        // receiveDeferredMessages(problemID, senderID);
+        // } else {
+        // System.out.println("deferring");
+        // deferMessage(problemID, senderMatrix, senderID);
+        // }
     }
 
     // listening messages from other processes
@@ -299,10 +331,67 @@ public class Client {
         return hashResult;
     }
 
-    public void insert(int objectID) throws NumberFormatException, IOException, InterruptedException {
+    public void write(int objectID) throws NumberFormatException, IOException, InterruptedException {
         int[] hashResult = hashFunction(objectID);
         List<String> receivers = new ArrayList<>();
         receivers.add(this.serverIPs.get(hashResult[0]) + ":" + (2100 + hashResult[0] + 1));
-        this.sendMessages(receivers, "client" + "," + numID + "," + "insert" + "," + objectID, numID);
+        // this.sendMessages(receivers, "client" + "," + numID + "," + "write" + "," +
+        // objectID, numID);
+        writeRequestSuccess = false;
+        writeFailed = false;
+        int numDown = 0;
+        while (!writeRequestSuccess && numDown < 2 && !writeFailed) {
+            try {
+                int currentHashServer = hashResult[0];
+                if (numDown > 0) {
+                    // change server in serverList
+                    currentHashServer = hashResult[1];
+                    receivers.clear();
+                    receivers.add(this.serverIPs.get(hashResult[1]) + ":" + (2100 + hashResult[1] + 1));
+                }
+                this.sendMessages(receivers,
+                        "client" + "," + numID + "," + "write" + "," + objectID + "," + currentHashServer, numID);
+                Thread.sleep(1000);
+            } catch (ConnectException e) {
+                System.out.println("Server " + hashResult[0] + " is down. Retrying with the next server...");
+                numDown++;
+            }
+        }
+        if (!writeRequestSuccess || writeFailed) {
+            System.out.println("Write failed. 2/3 servers are down.");
+        }
     }
+
+    public void read(int objectID) throws NumberFormatException, IOException, InterruptedException {
+        int[] hashResult = hashFunction(objectID);
+        List<String> serverList = new ArrayList<>();
+        // add randomly from hashResult
+        int random = (int) (Math.random() * 3);
+        serverList.add(this.serverIPs.get(hashResult[random]) + ":" + (2100 + hashResult[random] + 1));
+        // this.sendMessages(serverList, "client" + "," + numID + "," + "read" + "," +
+        // objectID, numID);
+        int attempt = 0;
+        readSuccess = false;
+        while (!readSuccess) {
+            try {
+                Thread.sleep(200);
+                if (attempt > 0) {
+                    // change server in serverList
+                    serverList.clear();
+                    int currentServer = random;
+                    while (random == currentServer) {
+                        random = (int) (Math.random() * 3);
+                    }
+                    serverList.add(this.serverIPs.get(hashResult[random]) + ":" + (2100 + hashResult[random] + 1));
+                }
+                this.sendMessages(serverList, "client" + "," + numID + "," + "read" + "," + objectID, numID);
+                break;
+            } catch (ConnectException e) {
+                attempt++;
+                System.out.println("Connection refused. Retrying...");
+            }
+        }
+
+    }
+
 }
