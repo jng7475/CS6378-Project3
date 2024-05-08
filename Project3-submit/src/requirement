@@ -1,0 +1,42 @@
+7 data servers + 5 clients
+communication channels between all 7 servers
+
+
+when client wants R/W
+    make communication channel
+    last at least to complete operation
+
+
+on read, pick random server of the three
+    if object not there (no write of this object before read), error code
+
+
+object on 3 server, H, H+2%7, H+4%7
+
+
+if channel is disrupt, no message sent
+   channel between client server
+   channel between server server
+
+
+on write to that object
+    contact server H, if not live go to next, if 2 die, no update on all (check availability first before update)
+    update it die?
+    give task to that server
+    that server update to other servers
+
+
+make sure no read-write conflict
+--------------------------------------------------------------------- DONE UP----------------------------------------------------------
+
+if 2 clients want to write same object, check availability first (need at least 2 online), then do total order on update, same order update on all copies
+
+
+disable some communication channel to partition to 2
+some update can be done on one, some on the others
+
+
+merge 
+	copy from other server
+	make sure no write to these Objects
+	make sure no read to these Objects of this Server
