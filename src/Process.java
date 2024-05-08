@@ -14,20 +14,21 @@ public class Process {
         // args[0] will be of form s1,s2,s3,s4,s5,s6,s7 or c1,c2,c3,c4,c5
         String arg = args[0];
         boolean isServer = arg.charAt(0) == 's';
-        String status;
+        String status = "";
         // if there's a second argument, it will be the status of the process
         if (args.length > 1) {
             status = args[1];
-        } 
+        }
+        System.out.println("Status: " + status);
         int id = Integer.parseInt(arg.substring(1));
         String processId = "Process " + id;
         int port = 2100 + id;
-        
+
         if (isServer) {
             System.out.println("Starting server " + processId + " on port " + port);
 
             Server process = new Server(processId, port, id);
-            
+
             List<String> receivers = new ArrayList<>();
             for (int i = 1; i < 8; i++) {
                 if (i != id) {
@@ -45,11 +46,22 @@ public class Process {
             });
             receiverThread.start();
             Thread.sleep(1000 * (8 - id));
-            process.sendMessages(receivers, "initializing" + "," + id, id);
-            while (process.connections.size() < 6) {
-                Thread.sleep(100);
+            if (status.equals("i")) {
+                process.sendMessages(receivers, "initializing" + "," + id, id);
+                while (process.connections.size() < 6) {
+                    Thread.sleep(100);
+                }
+            } else if (status.equals("r")) {
+                process.sendMessages(receivers, "recover" + "," + id, id);
             }
             Thread.sleep(1000);
+            if (status.equals("r")) {
+                // print current object maps
+                for (int key : process.objectMap.keySet()) {
+                    // print object ID and content
+                    System.out.println("Object ID: " + key + ", Content: " + process.objectMap.get(key).content);
+                }
+            }
             // process.broadcastMessage(receivers, id);
         } else {
             Client process = new Client(processId, port, id);
