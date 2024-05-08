@@ -1,7 +1,6 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Client {
     private final String id;
@@ -11,7 +10,6 @@ public class Client {
     public int[][] matrix = new int[4][4];
     public Set<Integer> connections = new HashSet<>();
     public Set<String> messages = new HashSet<>();
-    public CopyOnWriteArrayList<int[]> messageBufferList = new CopyOnWriteArrayList<>();
     public boolean deferHappened = false;
     public int messageSent = 0;
     public int messageReceived = 0;
@@ -32,7 +30,7 @@ public class Client {
         this.serverSocket = new ServerSocket(port);
         this.matrix = new int[][] { { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } };
         serverIPs.add("10.176.69.33"); // 02
-        serverIPs.add("10.176.69.34"); // 03
+        serverIPs.add("10.176.69.37"); // 06
         serverIPs.add("10.176.69.35"); // 04
         serverIPs.add("10.176.69.36"); // 05
         serverIPs.add("10.176.69.54"); // 23
@@ -41,6 +39,9 @@ public class Client {
 
         clientIPs.add("10.176.69.72"); // 41
         clientIPs.add("10.176.69.73"); // 42
+        clientIPs.add("10.176.69.71"); // 40
+        clientIPs.add("10.176.69.75"); // 44
+        clientIPs.add("10.176.69.76"); // 45
     }
 
     public void sendMessages(List<String> receivers, String message, int senderID)

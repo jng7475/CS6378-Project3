@@ -1,8 +1,6 @@
 import java.io.*;
-import java.lang.reflect.Array;
 import java.net.*;
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Server {
     private final String id;
@@ -17,13 +15,15 @@ public class Server {
     List<String> serverIPs = new ArrayList<>();
     List<String> clientIPs = new ArrayList<>();
 
+    public boolean recovering = false;
+
     public Server(String id, int port, int numID) throws IOException {
         this.id = id;
         this.ownPort = port;
         this.numID = numID;
         this.serverSocket = new ServerSocket(port);
         serverIPs.add("10.176.69.33"); // 02
-        serverIPs.add("10.176.69.34"); // 03
+        serverIPs.add("10.176.69.37"); // 06
         serverIPs.add("10.176.69.35"); // 04
         serverIPs.add("10.176.69.36"); // 05
         serverIPs.add("10.176.69.54"); // 23
@@ -32,6 +32,9 @@ public class Server {
 
         clientIPs.add("10.176.69.72"); // 41
         clientIPs.add("10.176.69.73"); // 42
+        clientIPs.add("10.176.69.71"); // 40
+        clientIPs.add("10.176.69.75"); // 44
+        clientIPs.add("10.176.69.76"); // 45
     }
 
     public void sendMessages(List<String> receivers, String message, int senderID)
@@ -72,10 +75,13 @@ public class Server {
         } else if (message[0].equals("client")) {
             String command = message[2];
             String objectID = message[3];
-            String currentServer = message[4];
+            List<String> clientReceiver = new ArrayList<>();
+            // add client to receivers
+            clientReceiver.add(clientIPs.get(senderID - 1) + ":" + (2100 + senderID));
             System.out.println("This is main server, from client: " + senderID + " with command: " + command
                     + " and objectID: " + objectID);
             if (command.equals("write")) {
+                String currentServer = message[4];
                 int[] hashResult = hashFunction(Integer.parseInt(objectID));
                 List<String> receivers = new ArrayList<>();
                 List<String> receiver1 = new ArrayList<>();
@@ -113,10 +119,6 @@ public class Server {
                     numDown++;
 
                 }
-
-                List<String> clientReceiver = new ArrayList<>();
-                // add client to receivers
-                clientReceiver.add(clientIPs.get(senderID - 1) + ":" + (2100 + senderID));
                 // NEW
                 try {
                     if (numDown == 2) {
@@ -127,7 +129,7 @@ public class Server {
                                 numID);
                         return;
                     }
-
+                    // update object content
                     if (objectMap.containsKey(Integer.parseInt(objectID))) {
                         // add 1 to content
                         objectMap.get(Integer.parseInt(objectID)).content += 1;
@@ -136,8 +138,11 @@ public class Server {
                         objectMap.put(Integer.parseInt(objectID), new Object(Integer.parseInt(objectID), 1));
                     }
 
-                    this.sendMessages(receivers, "write" + "," + numID + "," + "write" + "," + objectID,
+                    // send to other 2 replicas
+                    this.sendMessages(receivers, "write" + "," + numID + "," + "write" + "," + objectID +
+                            "," + senderID,
                             numID);
+
                     this.sendMessages(clientReceiver,
                             "success" + "," + numID + "," + "write" + ","
                                     + objectMap.get(Integer.parseInt(objectID)).content,
@@ -149,22 +154,23 @@ public class Server {
                     System.out.println("Connection Down");
                 }
             } else if (command.equals("read")) {
-                List<String> receivers = new ArrayList<>();
-                // add client to receivers
-                receivers.add(clientIPs.get(senderID - 1) + ":" + (2100 + senderID));
+                if (recovering) {
+                    System.out.println("Server is recovering, please try again later");
+                    throw new ConnectException();
+                }
                 // NEW
                 try {
                     if (objectMap.containsKey(Integer.parseInt(message[3]))) {
                         System.out.println(
                                 "ObjectID: " + message[2] + " Content: "
                                         + objectMap.get(Integer.parseInt(message[3])).content);
-                        this.sendMessages(receivers,
+                        this.sendMessages(clientReceiver,
                                 "success" + "," + numID + "," + "read" + ","
                                         + objectMap.get(Integer.parseInt(message[3])).content,
                                 numID);
                     } else {
                         System.out.println("ObjectID: " + message[3] + " does not exist");
-                        this.sendMessages(receivers,
+                        this.sendMessages(clientReceiver,
                                 "error" + "," + numID + "," + "Read operation failed because object does not exist",
                                 numID);
                     }
@@ -176,6 +182,7 @@ public class Server {
         }
         if (message[0].equals("write")) {
             String objectID = message[3];
+            String clientID = message[4];
             if (objectMap.containsKey(Integer.parseInt(objectID))) {
                 // add 1 to content
                 objectMap.get(Integer.parseInt(objectID)).content += 1;
@@ -185,7 +192,8 @@ public class Server {
             }
             // print objectID and object content of current object
             System.out.println(
-                    "ObjectID: " + objectID + " Content: " + objectMap.get(Integer.parseInt(objectID)).content);
+                    "ObjectID: " + objectID + " Content: " + objectMap.get(Integer.parseInt(objectID)).content
+                            + " from client: " + clientID);
             return;
         }
         if (message[0].equals("recover")) {
