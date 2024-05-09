@@ -79,29 +79,6 @@ public class Process {
             });
             receiverThread.start();
             Thread.sleep(1000);
-            // continuosly get input from user
-            // while (true) {
-            // Scanner scanner = new Scanner(System.in);
-            // System.out.println("Enter command: ");
-            // // command will be of form write 1, delete 1, search 1
-            // String command = scanner.nextLine();
-            // String[] commandArr = command.split(" ");
-            // String commandType = commandArr[0];
-            // String objectID = commandArr[1];
-            // switch (commandType) {
-            // case "write":
-            // process.write(Integer.parseInt(objectID));
-            // break;
-            // case "read":
-            // process.read(Integer.parseInt(objectID));
-            // break;
-            // default:
-            // System.out.println("Invalid command");
-            // break;
-            // }
-            // }
-            // read line by line from input file, if id = 1, read c1.txt
-            // if id = 2, read c2.txt
 
             String fileName = "c" + id + ".txt"; // Specify the path to your text file
 
@@ -109,6 +86,27 @@ public class Process {
                 String line;
                 while ((line = br.readLine()) != null) {
                     String[] commandArr = line.split(" ");
+                    String commandType = commandArr[0];
+                    String objectID = commandArr[1];
+                    switch (commandType) {
+                        case "write":
+                            process.write(Integer.parseInt(objectID));
+                            break;
+                        case "read":
+                            process.read(Integer.parseInt(objectID));
+                            break;
+                        default:
+                            System.out.println("Invalid command");
+                            break;
+                    }
+                }
+                // continuosly get input from user
+                while (true) {
+                    Scanner scanner = new Scanner(System.in);
+                    System.out.println("Enter command: ");
+                    // command will be of form write 1, delete 1, search 1
+                    String command = scanner.nextLine();
+                    String[] commandArr = command.split(" ");
                     String commandType = commandArr[0];
                     String objectID = commandArr[1];
                     switch (commandType) {

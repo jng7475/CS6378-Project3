@@ -88,14 +88,14 @@ public class Client {
             if (command.equals("write")) {
                 writeRequestSuccess = true;
             } else if (command.equals("read")) {
-                System.out.println("Read from server " + serverID + ": " + content);
+                System.out.println("Read from server " + (serverID - 1) + ": " + content);
                 readSuccess = true;
             }
             return;
         } else if (message[0].equals("error")) {
             int serverID = Integer.parseInt(message[1]);
             String error = message[2];
-            System.out.println("Failed to read from server " + serverID + " with error: " + error);
+            System.out.println("Failed to read from server " + (serverID - 1) + " with error: " + error);
             return;
         } else if (message[0].equals("errorWrite")) {
             int serverID = Integer.parseInt(message[1]);
